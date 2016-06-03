@@ -1,4 +1,4 @@
-# Copyright (c) 2014 Hewlett-Packard Development Company, L.P.
+# (C) Copyright 2014 Hewlett Packard Enterprise Development Company LP
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -160,14 +160,6 @@ class TestMonascaStatsd(unittest.TestCase):
                        23,
                        dimensions={'status': 'sampled'},
                        sample_rate=0.9)
-
-        def test_samples_with_dimensions(self):
-            for _ in range(100):
-                gauge.send('gst',
-                           23,
-                           dimensions={'status': 'sampled'},
-                           sample_rate=0.9)
-            self.assertEqual('gst:23|g|@0.9|#status:sampled')
 
     def test_timing(self):
         timer = self.client.get_timer()
