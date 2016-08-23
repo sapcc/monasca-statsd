@@ -107,7 +107,7 @@ class Connection(object):
                 log.exception("Error submitting metric")
             elif self._send_seq_errors == 10:
                 log.exception("Repeated errors submitting metric. Reducing logs")
-            elif self._send_seq_errors % 100:
+            elif self._send_seq_errors % 100 == 0:
                 log.exception("%d errors submitting metric", self._send_seq_errors)
 
     def _send_to_buffer(self, packet):
