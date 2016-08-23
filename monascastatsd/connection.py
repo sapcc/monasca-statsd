@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import logging
+import os
 import random
 import socket
 
@@ -22,13 +23,16 @@ try:
 except ImportError:
     imap = map
 
+STATSD_PORT = int(os.getenv('STATSD_PORT', '8125'))
+STATSD_HOST = os.getenv('STATSD_HOST', 'localhost')
+
 logging.basicConfig()
 log = logging.getLogger(__name__)
 
 
 class Connection(object):
 
-    def __init__(self, host='localhost', port=8125, max_buffer_size=50):
+    def __init__(self, host=STATSD_HOST, port=STATSD_PORT, max_buffer_size=50):
         """Initialize a Connection object.
 
         >>> monascastatsd = MonascaStatsd()
