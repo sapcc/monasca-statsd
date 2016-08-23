@@ -100,15 +100,16 @@ class Connection(object):
     def _send_to_server(self, packet):
         try:
             self.socket.send(packet.encode(self.encoding))
+            if self._send_seq_errors >= 10:
+                log.info("Statsd port %s:%d available again - resetting error counter", self._host, self._port)
             self._send_seq_errors = 0
         except socket.error:
             self._send_seq_errors += 1
             if self._send_seq_errors < 10:
-                log.exception("Error submitting metric")
-            elif self._send_seq_errors == 10:
-                log.exception("Repeated errors submitting metric. Reducing logs")
+                log.exception("Error submitting metric (total: %d)", self._send_seq_errors)
             elif self._send_seq_errors % 100 == 0:
-                log.exception("%d errors submitting metric", self._send_seq_errors)
+                log.exception("Repeated errors submitting metric (total: %d) - logging every 100 failures",
+                              self._send_seq_errors)
 
     def _send_to_buffer(self, packet):
         self.buffer.append(packet)
