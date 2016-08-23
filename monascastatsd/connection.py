@@ -47,6 +47,7 @@ class Connection(object):
         self._send = self._send_to_server
         self.connect(host, port)
         self.encoding = 'utf-8'
+        self._send_seq_errors = 0
 
     def __enter__(self):
         self.open_buffer(self.max_buffer_size)
@@ -99,8 +100,15 @@ class Connection(object):
     def _send_to_server(self, packet):
         try:
             self.socket.send(packet.encode(self.encoding))
+            self._send_seq_errors = 0
         except socket.error:
-            log.exception("Error submitting metric")
+            self._send_seq_errors += 1
+            if self._send_seq_errors < 10:
+                log.exception("Error submitting metric")
+            elif self._send_seq_errors == 10:
+                log.exception("Repeated errors submitting metric. Reducing logs")
+            elif self._send_seq_errors % 100:
+                log.exception("%d errors submitting metric", self._send_seq_errors)
 
     def _send_to_buffer(self, packet):
         self.buffer.append(packet)
