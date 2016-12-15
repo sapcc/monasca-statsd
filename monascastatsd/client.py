@@ -40,15 +40,20 @@
 
 """Monasca-Statsd is a Python client for Statsd that adds dimensions.
 """
+import os
+
 from monascastatsd.connection import Connection
 from monascastatsd.counter import Counter
 from monascastatsd.gauge import Gauge
 from monascastatsd.timer import Timer
 
+STATSD_PORT = int(os.getenv('STATSD_PORT', '8125'))
+STATSD_HOST = os.getenv('STATSD_HOST', 'localhost')
+
 
 class Client(object):
 
-    def __init__(self, name=None, host='localhost', port=8125,
+    def __init__(self, name=None, host=STATSD_HOST, port=STATSD_PORT,
                  connection=None, max_buffer_size=50, dimensions=None):
         """Initialize a Client object.
 
