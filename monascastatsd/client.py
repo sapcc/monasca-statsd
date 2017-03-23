@@ -55,7 +55,7 @@ STATSD_HOST = os.getenv('STATSD_HOST', 'localhost')
 class Client(object):
 
     def __init__(self, name=None, host=STATSD_HOST, port=STATSD_PORT,
-                 connection=None, max_buffer_size=50, dimensions=None):
+                 connection=None, max_buffer_size=50, buffer_timeout=60.0, dimensions=None):
         """Initialize a Client object.
 
         >>> monascastatsd = MonascaStatsd()
@@ -66,8 +66,11 @@ class Client(object):
         :param port: the port of the MonascaStatsd server.
         :param max_buffer_size: Maximum number of metric to buffer before
          sending to the server if sending metrics in batch
+        :param buffer_timeout: Max age of the buffer contents in seconds. If buffer is older, then it will be flushed on
+         next occasion regardless of the buffer size.
         """
         self._max_buffer_size = max_buffer_size
+        self._buffer_timeout = buffer_timeout
         self._set_connection(connection, host, port)
         self._dimensions = dimensions
         self._client_name = name
@@ -76,7 +79,8 @@ class Client(object):
         if connection is None:
             self.connection = Connection(host=host,
                                          port=port,
-                                         max_buffer_size=self._max_buffer_size)
+                                         max_buffer_size=self._max_buffer_size,
+                                         buffer_timeout=self._buffer_timeout)
         else:
             self.connection = connection
 

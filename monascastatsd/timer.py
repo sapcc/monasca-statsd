@@ -58,7 +58,7 @@ class Timer(metricbase.MetricBase):
         >>> monascastatsd.timing("query.response.time", 1234)
         """
         self._connection.report(metric=self.update_name(name),
-                                metric_type='g',
+                                metric_type='ms',
                                 value=value,
                                 dimensions=self.update_dimensions(dimensions),
                                 sample_rate=sample_rate)
