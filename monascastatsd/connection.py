@@ -57,7 +57,7 @@ log = logging.getLogger(__name__)
 
 
 class Connection(object):
-    def __init__(self, host=STATSD_HOST, port=STATSD_PORT, max_buffer_size=50, buffer_timeout=60.0):
+    def __init__(self, host=STATSD_HOST, port=STATSD_PORT, auto_buffer=False, max_buffer_size=50, buffer_timeout=60.0):
         """Initialize a Connection object.
 
         >>> monascastatsd = MonascaStatsd()
@@ -66,11 +66,13 @@ class Connection(object):
             will be prefixed by name
         :param host: the host of the MonascaStatsd server.
         :param port: the port of the MonascaStatsd server.
+        :param auto_buffer: when set to True, the connection buffer will be used even outside with blocks
         :param max_buffer_size: Maximum number of metric to buffer before
          sending to the server if sending metrics in batch
         :param buffer_timeout: Max age of the buffer contents in seconds. If buffer is older, then it will be flushed on
          next occasion.
         """
+        self.auto_buffer = auto_buffer
         self.max_buffer_size = max_buffer_size
         self.buffer_timeout = buffer_timeout
         self._send = self._send_to_server
@@ -82,6 +84,13 @@ class Connection(object):
         self._last_send_error = None
         self._last_flush_ts = None
 
+        if self.auto_buffer:
+            self.open_buffer()
+
+    def __del__(self):
+        if self.auto_buffer:
+            self.close_buffer()
+
     def __enter__(self):
         self.open_buffer()
         return self
@@ -92,6 +101,13 @@ class Connection(object):
     def open_buffer(self, max_buffer_size=None, buffer_timeout=None):
         """Open a buffer to send a batch of metrics in one packet.
 
+        By default the parameters from the constructor will be used. Setting these parameters will change
+        these settings for this connection object.
+
+        :param max_buffer_size: Maximum number of metric to buffer before
+         sending to the server if sending metrics in batch
+        :param buffer_timeout: Max age of the buffer contents in seconds. If buffer is older, then it will be flushed on
+         next occasion.
         """
         self.max_buffer_size = max_buffer_size if max_buffer_size else self.max_buffer_size
         self.buffer_timeout = buffer_timeout if buffer_timeout else self.buffer_timeout
@@ -103,8 +119,8 @@ class Connection(object):
         """Flush the buffer and switch back to single metric packets.
 
         """
-        self._send = self._send_to_server
-        self._last_flush_ts = None
+        if not self.auto_buffer:
+            self._send = self._send_to_server
         self._flush_buffer()
         self._last_flush_ts = None
 

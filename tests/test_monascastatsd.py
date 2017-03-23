@@ -46,15 +46,14 @@ import socket
 import time
 import unittest
 
-import monascastatsd as mstatsd
-
 import mock
 import six
 from six.moves import range
 
+import monascastatsd as mstatsd
+
 
 class FakeSocket(object):
-
     """A fake socket for testing."""
 
     def __init__(self):
@@ -74,13 +73,11 @@ class FakeSocket(object):
 
 
 class BrokenSocket(FakeSocket):
-
     def send(self, payload):
         raise socket.error("Socket error")
 
 
 class TestMonascaStatsd(unittest.TestCase):
-
     def setUp(self):
         conn = mstatsd.Connection()
         conn.socket = FakeSocket()
@@ -92,16 +89,14 @@ class TestMonascaStatsd(unittest.TestCase):
     @mock.patch('monascastatsd.client.Connection')
     def test_client_set_host_port(self, connection_mock):
         mstatsd.Client(host='foo.bar', port=5213)
-        connection_mock.assert_called_once_with(host='foo.bar',
-                                                port=5213,
-                                                max_buffer_size=50, buffer_timeout=60)
+        connection_mock.assert_called_once_with(host='foo.bar', port=5213,
+                                                auto_buffer=False, max_buffer_size=50, buffer_timeout=60)
 
     @mock.patch('monascastatsd.client.Connection')
     def test_client_default_host_port(self, connection_mock):
         mstatsd.Client()
-        connection_mock.assert_called_once_with(host='localhost',
-                                                port=8125,
-                                                max_buffer_size=50, buffer_timeout=60)
+        connection_mock.assert_called_once_with(host='localhost', port=8125,
+                                                auto_buffer=False, max_buffer_size=50, buffer_timeout=60)
 
     def test_counter(self):
         counter = self.client.get_counter(name='page.views')
@@ -309,8 +304,8 @@ class TestMonascaStatsd(unittest.TestCase):
             client = mstatsd.Client(name='BufferedTester', connection=conn)
             counter = client.get_counter('mycounter')
             counter.increment()
-            time.sleep(3.0)   # make sure the buffer flushes due to timeout
-            counter.increment() # will flush
+            time.sleep(3.0)  # make sure the buffer flushes due to timeout
+            counter.increment()  # will flush
             counter.increment()
             self.assertEqual(six.b('\n'.join(['BufferedTester.mycounter:1|c' for _ in range(2)])),
                              fake_socket.recv())
@@ -323,6 +318,7 @@ class TestMonascaStatsd(unittest.TestCase):
         assert 0 <= abs(a - b) <= delta, "%s - %s not within %s" % (a,
                                                                     b,
                                                                     delta)
+
 
 if __name__ == '__main__':
     unittest.main()
