@@ -104,6 +104,7 @@ class Connection(object):
 
         """
         self._send = self._send_to_server
+        self._last_flush_ts = None
         self._flush_buffer()
         self._last_flush_ts = None
 
