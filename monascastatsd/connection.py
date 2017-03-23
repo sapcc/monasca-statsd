@@ -39,25 +39,25 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import six
-
 import logging
 import os
 import random
 import socket
+import time
 
-from six.moves import map
+import six
 
 STATSD_PORT = int(os.getenv('STATSD_PORT', '8125'))
 STATSD_HOST = os.getenv('STATSD_HOST', 'localhost')
+MIN_BACKOFF = 60.0
+MAX_BACKOFF = 3600.0
 
 logging.basicConfig()
 log = logging.getLogger(__name__)
 
 
 class Connection(object):
-
-    def __init__(self, host=STATSD_HOST, port=STATSD_PORT, max_buffer_size=50):
+    def __init__(self, host=STATSD_HOST, port=STATSD_PORT, max_buffer_size=50, buffer_timeout=60.0):
         """Initialize a Connection object.
 
         >>> monascastatsd = MonascaStatsd()
@@ -68,13 +68,19 @@ class Connection(object):
         :param port: the port of the MonascaStatsd server.
         :param max_buffer_size: Maximum number of metric to buffer before
          sending to the server if sending metrics in batch
+        :param buffer_timeout: Max age of the buffer contents in seconds. If buffer is older, then it will be flushed on
+         next occasion.
         """
         self.max_buffer_size = max_buffer_size
+        self.buffer_timeout = buffer_timeout
         self._send = self._send_to_server
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.connect(host, port)
         self.encoding = 'utf-8'
         self._send_seq_errors = 0
+        self._dropped_packets = 0
+        self._last_send_error = None
+        self._last_flush_ts = None
 
     def __enter__(self):
         self.open_buffer(self.max_buffer_size)
@@ -83,11 +89,13 @@ class Connection(object):
     def __exit__(self, the_type, value, traceback):
         self.close_buffer()
 
-    def open_buffer(self, max_buffer_size=50):
+    def open_buffer(self, max_buffer_size=50, buffer_timeout=60.0):
         """Open a buffer to send a batch of metrics in one packet.
 
         """
         self.max_buffer_size = max_buffer_size
+        self.buffer_timeout = buffer_timeout
+        self._last_flush_ts = time.time()
         self.buffer = []
         self._send = self._send_to_buffer
 
@@ -96,6 +104,7 @@ class Connection(object):
 
         """
         self._send = self._send_to_server
+        self._last_flush_ts = None
         self._flush_buffer()
 
     def connect(self, host, port):
@@ -141,27 +150,38 @@ class Connection(object):
     @staticmethod
     def _payload_extension_from_dimensions(dimensions):
         if dimensions:
-            return ["|#", dimensions]
+            return ["|#", ','.join(['{}:{}'.format(k, v) for k, v in dimensions.iteritems()])]
         else:
             return []
 
     def _send_to_server(self, packet):
         try:
-            self.socket.send(packet.encode(self.encoding))
-            if self._send_seq_errors >= 10:
-                log.info("Statsd port %s:%d available again - resetting error counter", self._host, self._port)
-            self._send_seq_errors = 0
+            now = time.time()
+            if self._send_seq_errors == 0 or (now - self._last_send_error_ts) > self._backoff_delay:
+                self.socket.send(packet.encode(self.encoding))
+                if self._send_seq_errors > 0:
+                    log.info("Statsd available again - resetting error counter")
+                self._send_seq_errors = 0
+                self._dropped_packets = 0
+                self._last_flush_ts = time.time()
+            else:
+                self._dropped_packets += packet.count('\n') + 1
         except socket.error:
+            if self._send_seq_errors == 0:
+                self._backoff_delay = MIN_BACKOFF
+                log.exception("Error submitting metric to StasdD. Backing off %d secs.", self._backoff_delay)
+            else:
+                log.error("Repeated errors submitting metric to StasdD. Skipped %d packets. Backing off %d more secs.",
+                          self._dropped_packets, self._backoff_delay)
+                self._backoff_delay = min(self._backoff_delay * 2, MAX_BACKOFF)
+
+            self._dropped_packets += packet.count('\n') + 1
             self._send_seq_errors += 1
-            if self._send_seq_errors < 10:
-                log.exception("Error submitting metric (total: %d)", self._send_seq_errors)
-            elif self._send_seq_errors % 100 == 0:
-                log.exception("Repeated errors submitting metric (total: %d) - logging every 100 failures",
-                              self._send_seq_errors)
+            self._last_send_error_ts = time.time()
 
     def _send_to_buffer(self, packet):
         self.buffer.append(packet)
-        if len(self.buffer) >= self.max_buffer_size:
+        if len(self.buffer) >= self.max_buffer_size or (time.time() - self._last_flush_ts) > self.buffer_timeout:
             self._flush_buffer()
 
     def _flush_buffer(self):
