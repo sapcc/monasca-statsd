@@ -206,6 +206,11 @@ class TestMonascaStatsd(unittest.TestCase):
                        dimensions={'status': 'sampled'},
                        sample_rate=0.9)
 
+    def test_histogram(self):
+        hist = self.client.get_histogram()
+        hist.send('t', 123)
+        self.assertEqual(six.b("t:123|h|#env:test"), self.recv(hist))
+
     def test_timing(self):
         timer = self.client.get_timer()
         timer.timing('t', 123)

@@ -35,7 +35,7 @@ NOTE: You can also create a client without specifying the connection and it will
 with the default connection information for the monasca-agent statsd processor daemon 
 which uses host='localhost' and port=8125.
 
-client = mstatsd.Client(dimensions={'env': 'test'})
+client = mstatsd.Client(auto_buffer=True, dimensions={'env': 'test'})
 
 # Increment and decrement a counter.
 counter = client.get_counter(name='page.views')
@@ -75,6 +75,7 @@ with timer.time('t'):
 histogram = client.get_histogram('my_hist')
 histogram.send('query.time', 10, dimensions = {'version': '1.0', 'environment': 'dev'})
 ```
+
 Repository
 -------------
 

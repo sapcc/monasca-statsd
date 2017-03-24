@@ -42,6 +42,7 @@
 """
 import os
 
+from histogram import Histogram
 from monascastatsd import common
 from monascastatsd.connection import Connection
 from monascastatsd.counter import Counter
@@ -107,6 +108,13 @@ class Client(object):
 
         """
         return self._get_statsd_object_by_type(Timer, name, connection,
+                                               dimensions)
+
+    def get_histogram(self, name=None, connection=None, dimensions=None):
+        """Gets a Histogram object.
+
+        """
+        return self._get_statsd_object_by_type(Histogram, name, connection,
                                                dimensions)
 
     def _get_statsd_object_by_type(self, object_type, name, connection,

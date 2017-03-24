@@ -49,9 +49,12 @@ class Counter(metricbase.MetricBase):
                                              dimensions=dimensions)
 
     def increment(self, value=1, dimensions=None, sample_rate=1):
-        """Increment a counter, optionally setting a value, dimensions
+        """Increment a counter, optionally setting a value
 
-        and a sample rate.
+        :param name: metric name
+        :param value: the step-size
+        :param dimensions: dimensions used to distinguish multiple measurements of the same metric (flat dict.)
+        :param sample_rate: sample rate, values < 1 mean that only <sample_rate>% of values will be considered
 
         >>> monascastatsd.increment()
         >>> monascastatsd.increment(12)
@@ -59,9 +62,12 @@ class Counter(metricbase.MetricBase):
         self._report_change(dimensions, sample_rate, value)
 
     def decrement(self, value=1, dimensions=None, sample_rate=1):
-        """Decrement a counter, optionally setting a value, dimensions and a
+        """Decrement a counter
 
-        sample rate.
+        :param name: metric name
+        :param value: step-size
+        :param dimensions: dimensions used to distinguish multiple measurements of the same metric (flat dict.)
+        :param sample_rate: sample rate, values < 1 mean that only <sample_rate>% of values will be considered
 
         >>> monascastatsd.decrement()
         >>> monascastatsd.decrement(2)

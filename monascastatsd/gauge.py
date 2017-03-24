@@ -49,9 +49,12 @@ class Gauge(metricbase.MetricBase):
                                              dimensions=dimensions)
 
     def send(self, name, value, dimensions=None, sample_rate=1):
-        """Record the value of a gauge, optionally setting a list of
+        """Record the value of a gauge
 
-        dimensions and a sample rate.
+        :param name: metric name
+        :param value: value (float or int)
+        :param dimensions: dimensions used to distinguish multiple measurements of the same metric (flat dict.)
+        :param sample_rate: sample rate, values < 1 mean that only <sample_rate>% of values will be considered
 
         >>> monascastatsd.gauge('users.online', 123)
         >>> monascastatsd.gauge('active.connections', 1001,
